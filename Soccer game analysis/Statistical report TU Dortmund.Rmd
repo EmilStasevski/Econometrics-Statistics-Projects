@@ -1,0 +1,428 @@
+---
+title: "statistical report TU Dortmund"
+author: "Emil Stasevski"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+#### Loading libraries
+
+
+
+```{r}
+options(scipen = 999)
+library(tidyverse)
+library(stargazer)
+library(psych)
+library(car)
+library(gridExtra)
+```
+
+
+
+
+
+### Data integrity
+
+```{r}
+df = read.csv("~/get out of Mordor/dortmund/passes.csv", sep = ';')
+
+df %>% nrow()
+
+df %>% head()
+```
+
+
+Checking NA values
+
+
+```{r}
+df %>% is.na() %>% colSums()
+```
+
+```{r}
+df %>% 
+  filter(is.na(passing_quote))
+```
+
+So basically, there are only two empty values, and, luckily only for only one team. 
+
+
+```{r}
+table(df$winner)
+```
+
+
+
+
+
+
+
+
+```{r}
+df %>% 
+  ggplot(aes(x = winner, fill = winner)) +
+  geom_bar()+
+  labs(y='Number of observations',x='Team winning status', 
+       title='The proportion of won and lost teams')+
+  theme_bw()+
+   theme(axis.title.x = element_text(size=12, face='bold'),axis.title.y = element_text(size=12, face='bold'), title =element_text(size=14, face='bold') )+
+  theme(axis.text.x = element_text( size=10))+
+  theme(axis.text.y = element_text( size=10))
+
+ggsave("~/get out of Mordor/dortmund/img/img1.jpg"  ,  dpi = 400
+      )
+df  %>% drop_na() -> df
+
+```
+
+
+
+
+
+
+```{r}
+df %>% 
+  ggplot(aes(x = passing_quote))+
+  geom_histogram(fill = 'deeppink')+
+  labs(y='Number of observations',x='Passing rate', 
+       )+
+  theme_bw()+
+   theme(axis.title.x = element_text(size=12, face='bold'),axis.title.y = element_text(size=12, face='bold'), title =element_text(size=14, face='bold') )+
+  theme(axis.text.x = element_text( size=10))+
+  theme(axis.text.y = element_text( size=10))
+
+ggsave("~/get out of Mordor/dortmund/img/img2.1.jpg",   dpi = 400)
+
+df %>% 
+  ggplot(aes(y = passing_quote))+
+  geom_boxplot()+
+  labs(x='', y ='Passing rate', 
+       )+
+  theme_bw()+
+   theme(axis.title.x = element_text(size=12, face='bold'),axis.title.y = element_text(size=12, face='bold'), title =element_text(size=14, face='bold') )+
+  theme(axis.text.x = element_text( size=10))+
+  theme(axis.text.y = element_text( size=10)) ->p2
+
+
+ggsave("~/get out of Mordor/dortmund/img/img2.2.jpg",  dpi = 400, width = 6, height = 8 )
+
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+library(stargazer)
+
+
+stats <- describeBy(df$passing_quote, df$winner, mat = T) 
+
+stats 
+```
+
+
+
+
+
+
+```{r}
+summary_by_status <- df %>% drop_na() %>% 
+  group_by(winner) %>%
+  summarize(
+    mean_passing_quote = mean(passing_quote, na.rm = TRUE),
+    sd_passing_quote = sd(passing_quote, na.rm = TRUE),
+    min_passing_quote = min(passing_quote, na.rm = TRUE),
+    max_passing_quote = max(passing_quote, na.rm = TRUE),
+    n = n()
+  )
+
+# Convert summary data into a data frame
+summary_long <- summary_by_status %>%
+  pivot_longer(cols = -winner, names_to = "statistic", values_to = "value")
+
+# Convert summary data into a data frame
+summary_long_df <- as.data.frame(summary_long)
+
+# Generate LaTeX table
+stargazer(
+  summary_long_df,
+  type = "latex",
+  summary = FALSE,
+  title = "Summary Statistics by Status",
+  label = "tab:summary_by_status",
+  digits = 2,
+  out = "summary_by_status.tex"
+)
+```
+
+
+
+
+
+```{r}
+df %>% 
+  ggplot(aes(x = winner, y = passing_quote, fill = winner))+
+  geom_boxplot()+
+  labs(x='Team winning status',y ='Passing quote', 
+       )+
+  theme_bw()+
+   theme(axis.title.x = element_text(size=12, face='bold'),axis.title.y = element_text(size=12, face='bold'), title =element_text(size=14, face='bold') )+
+  theme(axis.text.x = element_text( size=10))+
+  theme(axis.text.y = element_text( size=10)) 
+
+
+ggsave("~/get out of Mordor/dortmund/img/img4.1.jpg",   dpi = 400)
+
+df %>% 
+  ggplot(aes( x = passing_quote, fill = winner))+
+  geom_density()+
+  labs(y='Density',x='Passing rate', 
+       )+
+  theme_bw()+
+   theme(axis.title.x = element_text(size=12, face='bold'),axis.title.y = element_text(size=12, face='bold'), title =element_text(size=14, face='bold') )+
+  theme(axis.text.x = element_text( size=10))+
+  theme(axis.text.y = element_text( size=10)) 
+
+
+
+
+ggsave("~/get out of Mordor/dortmund/img/img4.2.jpg",   dpi = 400)
+```
+
+
+
+
+```{r}
+df %>% 
+  ggplot(aes( x = passing_quote, fill = winner))+
+  geom_density()+
+  theme_bw()
+
+```
+
+
+```{r}
+df %>% filter(passing_quote > 60) %>% nrow() /  df %>% nrow()
+```
+
+
+
+
+```{r}
+leveneTest(passing_quote ~ winner, data = df)
+```
+
+
+
+```{r}
+shapiro.test(df$passing_quote)
+```
+
+*So passing_quote in general, and its values for winning and loosing teams are NOT normally distributed.  We should apply not-parametric methods.*
+
+
+
+
+```{r}
+wilcox_test_result <- wilcox.test(passing_quote ~ winner, data = df)
+wilcox_test_result
+```
+
+
+
+
+```{r}
+kruskal_test_result <- kruskal.test(passing_quote ~ winner, data = df)
+kruskal_test_result 
+```
+
+
+
+
+
+**Since the data is not normally distributed the further test's inference is low, is procured additionaly**
+
+T-test
+
+
+```{r}
+t_test_result <- t.test(   passing_quote ~ winner , data = df)
+t_test_result
+```
+
+
+
+
+Analysis of variance (ANOVA)
+
+
+```{r}
+m1 <- aov(passing_quote ~ winner, data = df)
+summary(m1)
+```
+
+
+
+
+
+
+
+
+Is the expected difference in passing rate in games that end in a draw different from the expected difference in passing rate in games with a winner? 
+
+
+```{r}
+df %>% filter(winner == 'No') %>% select(game_id) %>% 
+  filter(duplicated(game_id)) %>% as.vector() ->draw_games_id
+```
+
+
+
+```{r}
+df$is_draw <- ifelse(df$game_id %in% draw_games_id$game_id, 'Yes, draw', 'No, one team won')
+```
+
+
+
+
+```{r}
+table(df$is_draw)
+```
+
+
+
+
+```{r}
+df %>% drop_na() %>% 
+  group_by(is_draw) %>% summarise(n = n()) %>% 
+  arrange(desc(is_draw)) %>%
+  mutate(prop = n / sum(df$n) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop ) %>% 
+  ggplot(aes(x = '', y = n, fill = is_draw))+
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+   geom_text(aes( y = ypos, label = n), color = "black", size=6) +
+  theme_void()+
+  labs(title = 'Game outcomes proportion', x = '', y = '', axis.text.y = '') +
+  
+  guides(fill=guide_legend(title="Is draw"))+
+   theme(axis.title.x = element_text(size=12, face='bold'),axis.title.y = element_text(size=12, face='bold'), title =element_text(size=14, face='bold') )+
+  theme(axis.text.x = element_text( size=10))+
+  theme(axis.text.y = element_text( size=10),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()
+        ) 
+
+
+
+ggsave("~/get out of Mordor/dortmund/img/img3.0.jpg",   dpi = 400)
+```
+
+
+```{r}
+summary_by_status <- df %>% drop_na() %>% 
+  group_by(is_draw) %>%
+  summarize(
+    mean_passing_quote = mean(passing_quote, na.rm = TRUE),
+    sd_passing_quote = sd(passing_quote, na.rm = TRUE),
+    min_passing_quote = min(passing_quote, na.rm = TRUE),
+    max_passing_quote = max(passing_quote, na.rm = TRUE),
+    n = n()
+  )
+
+# Convert summary data into a data frame
+summary_long <- summary_by_status %>%
+  pivot_longer(cols = -is_draw, names_to = "statistic", values_to = "value")
+
+# Convert summary data into a data frame
+summary_long_df <- as.data.frame(summary_long)
+
+# Generate LaTeX table
+stargazer(
+  summary_long_df,
+  type = "latex",
+  summary = FALSE,
+  title = "Summary Statistics by Game outcome",
+  label = "tab:summary_by_game_outcome",
+  digits = 2,
+  out = "summary_by_status.tex"
+)
+```
+
+
+
+
+
+
+
+```{r}
+wilcox_test_result <- wilcox.test(passing_quote ~ is_draw, data = df)
+wilcox_test_result
+```
+
+
+
+
+```{r}
+kruskal_test_result <- kruskal.test(passing_quote ~ is_draw, data = df)
+kruskal_test_result 
+```
+
+
+```{r}
+df %>% 
+  ggplot(aes(x = is_draw, y = passing_quote, fill = is_draw))+
+  geom_boxplot()+
+  labs(x='Game result',y ='Passing quote'
+       )+
+  guides(fill=guide_legend(title="Is draw"))+
+  theme_bw()+
+   theme(axis.title.x = element_text(size=12, face='bold'),axis.title.y = element_text(size=12, face='bold'), title =element_text(size=14, face='bold') )+
+  theme(axis.text.x = element_text( size=10))+
+  theme(axis.text.y = element_text( size=10)) ->p2
+
+ggsave("~/get out of Mordor/dortmund/img/img3.1.jpg",   dpi = 400)
+
+
+df %>% 
+  ggplot(aes( x = passing_quote, fill = is_draw))+
+  geom_density()+
+  labs(y='Density',x='Passing rate', 
+       )+
+  theme_bw()+
+  guides(fill=guide_legend(title="Is draw"))+
+   theme(axis.title.x = element_text(size=12, face='bold'),axis.title.y = element_text(size=12, face='bold'), title =element_text(size=14, face='bold') )+
+  theme(axis.text.x = element_text( size=10))+
+  theme(axis.text.y = element_text( size=10)) 
+
+
+
+ggsave("~/get out of Mordor/dortmund/img/img3.2.jpg",   dpi = 400)
+```
+
+
+
+*Interesting games*
+
+```{r}
+df %>% filter(passing_quote < 60 & winner == 'Yes')
+```
+
+
+
+
+
